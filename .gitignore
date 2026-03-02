@@ -1,0 +1,27 @@
+# Python environments
+venv/
+env/
+.env
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Testing / Local Data (ignored by default so we don't accidentally commit huge NRRD/MPS masks)
+*.nrrd
+*.mps
+results/
+results_docker/
+
+# Output exports
+*.csv
+*.xml
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+
+# OS generated files
+.DS_Store
+Thumbs.db

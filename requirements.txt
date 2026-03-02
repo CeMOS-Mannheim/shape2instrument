@@ -1,0 +1,4 @@
+numpy
+dicttoxml
+pynrrd
+opencv-python-headless
