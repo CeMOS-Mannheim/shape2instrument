@@ -12,10 +12,9 @@ WORKDIR /app
 COPY requirements.txt /app/
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy source maps
-COPY shape2csv_v2.py /app/
-COPY shape2xml_v2.py /app/
-COPY main.py /app/
+# Copy all source files (filtered by .dockerignore)
+COPY . /app/
+
 
 # Set default entrypoint
 ENTRYPOINT ["python", "main.py"]

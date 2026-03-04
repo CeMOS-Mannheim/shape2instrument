@@ -1,0 +1,17 @@
+venv/
+__pycache__/
+*.nrrd
+*.mps
+*.mis
+*.csv
+*.xml
+*.png
+.git/
+.gitignore
+temp_plot/
+temp_plot_mis/
+examples/
+results/
+docker-build.yml
+Dockerfile
+.dockerignore
