@@ -76,14 +76,10 @@ def extract_segments_from_nrrd(nrrd_path):
          raise ValueError(f"Expected 2D label mask, got shape: {data.shape}")
 
     segments = []
-    labels = np.unique(data)
+    segment_labels = []
+    valid_labels = sorted([l for l in np.unique(data) if l != 0])
     
-    # Make sure we process labels in a predictable sorted order
-    # Skip label 0 as it conventionally represents background
-    for label in sorted(labels):
-        if label == 0:
-            continue
-            
+    for label in valid_labels:
         binary_mask = (data == label).astype(np.uint8)
         
         # Find contours
@@ -95,28 +91,31 @@ def extract_segments_from_nrrd(nrrd_path):
             print(f"Warning: No contour found for label {label}")
             continue
             
-        # Get the largest contour for this label in case of fragmented pixels
-        largest_contour = max(contours, key=cv2.contourArea)
+        for c in contours:
+            # Reshape from (N, 1, 2) to (N, 2)
+            segment_points_cv = c.reshape(-1, 2)
+            
+            # Skip invalid contours (lines or points)
+            if len(segment_points_cv) < 3:
+                continue
+            
+            # TRANSFORM TO PHYSICAL SPACE
+            # segment_points_cv[:, 0] is j (column)
+            # segment_points_cv[:, 1] is i (row)
+            j_vals = segment_points_cv[:, 0:1]
+            i_vals = segment_points_cv[:, 1:2]
+            
+            spi = spacing_i.reshape(1, 2)
+            spj = spacing_j.reshape(1, 2)
+            orig = origin.reshape(1, 2)
+            
+            # physical = origin + i * spacing_i + j * spacing_j
+            physical_points = orig + i_vals * spi + j_vals * spj
+            
+            segments.append(physical_points)
+            segment_labels.append(label)
         
-        # Reshape from (N, 1, 2) to (N, 2)
-        segment_points_cv = largest_contour.reshape(-1, 2)
-        
-        # TRANSFORM TO PHYSICAL SPACE
-        # segment_points_cv[:, 0] is j (column)
-        # segment_points_cv[:, 1] is i (row)
-        j_vals = segment_points_cv[:, 0:1]
-        i_vals = segment_points_cv[:, 1:2]
-        
-        spi = spacing_i.reshape(1, 2)
-        spj = spacing_j.reshape(1, 2)
-        orig = origin.reshape(1, 2)
-        
-        # physical = origin + i * spacing_i + j * spacing_j
-        physical_points = orig + i_vals * spi + j_vals * spj
-        
-        segments.append(physical_points)
-        
-    return segments
+    return segments, segment_labels, valid_labels
 
 def main():
     parser = argparse.ArgumentParser(description="Shape to Instrument Format Converter")
@@ -152,11 +151,11 @@ def main():
     
     # 2. Extract Segments
     print(f"Extracting Segments from NRRD: {args.mask}")
-    segments = extract_segments_from_nrrd(args.mask)
+    segments, segment_labels, valid_labels = extract_segments_from_nrrd(args.mask)
     if not segments:
         print("Error: No segments found in the provided mask.")
         sys.exit(1)
-    print(f"Found {len(segments)} segments.")
+    print(f"Found {len(segments)} segments across {len(valid_labels)} unique labels.")
 
     # 3. Setup Transform arrays
     offset_arr = np.array([args.offset_x, args.offset_y])
@@ -182,13 +181,16 @@ def main():
             
         capture_ids = [cid.strip() for cid in args.cap_ids.split(",")]
         
-        if len(capture_ids) != len(segments):
-            print(f"Error: Number of capture IDs ({len(capture_ids)}) does not match number of segments ({len(segments)}).")
+        if len(capture_ids) != len(valid_labels):
+            print(f"Error: Number of capture IDs ({len(capture_ids)}) does not match number of unique labels ({len(valid_labels)}).")
             sys.exit(1)
+            
+        label_to_capid = dict(zip(valid_labels, capture_ids))
+        mapped_cap_ids = [label_to_capid[lbl] for lbl in segment_labels]
             
         shape2xml(
             segments=segments,
-            capture_ids=capture_ids,
+            capture_ids=mapped_cap_ids,
             calibration_points=calib_points,
             offset=offset_arr,
             scaling_factor=args.scale,
