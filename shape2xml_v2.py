@@ -29,19 +29,29 @@ def shape2xml(
     folder_name=None,
 ):
     """
+    Export shape segments and calibration points to Leica-compatible XML.
+
     Parameters
     ----------
-    segments : list of ndarray (N,2)
-    capture_ids : list of str
-    calibration_points : ndarray (3,2)
-    offset : ndarray (2,)
-    scaling_factor : float
-    invert_factor : ndarray (2,)
-    folder_name : str or None
+    segments : list of numpy.ndarray
+        List of (N, 2) arrays, each representing a contour.
+    capture_ids: list of str
+        The CapID associated with each segment.
+    calibration_points : numpy.ndarray
+        A (3, 2) array of physical calibration points.
+    offset : numpy.ndarray, optional
+        A (2,) array for [X, Y] offset (default: [0.0, 0.0]).
+    scaling_factor : float, optional
+        Global scaling factor (default: 1.0).
+    invert_factor : numpy.ndarray, optional
+        A (2,) array to flip axes (-1.0 to flip, default: [1.0, 1.0]).
+    folder_name : str or Path, optional
+        Output directory path.
 
     Returns
     -------
-    Path to created XML file
+    pathlib.Path or None
+        Path to the created XML file, or None if failed.
     """
 
     try:
@@ -135,16 +145,27 @@ def addshape2xml(
     invert_factor=np.array([1.0, 1.0]),
 ):
     """
-    Append new shapes to existing Leica-style XML file.
+    Append new shapes to an existing Leica-style XML file.
 
     Parameters
     ----------
-    segments : list of ndarray (N,2)
+    segments : list of numpy.ndarray
+        List of (N, 2) arrays, each representing a contour.
     capture_ids : list of str
+        The CapID associated with each new segment.
     file_name : str or Path
-    offset : ndarray (2,)
-    scaling_factor : float
-    invert_factor : ndarray (2,)
+        Path to the existing target .xml file.
+    offset : numpy.ndarray, optional
+        A (2,) array for [X, Y] offset (default: [0.0, 0.0]).
+    scaling_factor : float, optional
+        Global scaling factor (default: 1.0).
+    invert_factor : numpy.ndarray, optional
+        A (2,) array to flip axes (-1.0 to flip, default: [1.0, 1.0]).
+
+    Returns
+    -------
+    pathlib.Path or None
+        Path to the modified XML file, or None if failed.
     """
 
     try:

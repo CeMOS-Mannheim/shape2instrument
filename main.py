@@ -12,14 +12,32 @@ from shape2xml_v2 import shape2xml
 from mis_maker_class import mismaker
 
 def parse_mps_calibration(mps_path):
-    """Parse calibration points from Medical Point Set (.mps) file."""
+    """
+    Parse calibration points from Medical Point Set (.mps) file.
+
+    Parameters
+    ----------
+    mps_path : str or Path
+        Path to the target .mps XML file.
+
+    Returns
+    -------
+    numpy.ndarray
+        A (3, 2) array containing the [x, y] coordinates of the 3 calibration points.
+
+    Raises
+    ------
+    FileNotFoundError
+        If the mps_path does not exist.
+    ValueError
+        If the file does not contain exactly 3 points.
+    """
     if not Path(mps_path).exists():
         raise FileNotFoundError(f"MPS file not found: {mps_path}")
         
     tree = ET.parse(mps_path)
     root = tree.getroot()
     
-    # Extract points from point_set/time_series/point
     points = []
     for point_elem in root.findall(".//point"):
         x = float(point_elem.find("x").text)
@@ -32,9 +50,37 @@ def parse_mps_calibration(mps_path):
     return np.array(points)
 
 def extract_segments_from_nrrd(nrrd_path, physical_space=True):
-    """Extract distinct labeled segments from an NRRD file as polygons.
-       If physical_space is True, formats returns real world mm coordinates via NRRD header.
-       If False, returns raw image pixel coordinates."""
+    """
+    Extract distinct labeled segments from an NRRD multi-label mask as polygons.
+
+    Uses OpenCV's findContours to generate vector outlines of each labeled region.
+    Filters out noise (contours with < 3 points).
+
+    Parameters
+    ----------
+    nrrd_path : str or Path
+        Path to the multi-label NRRD image.
+    physical_space : bool, optional
+        If True (default), transforms pixel coordinates into physical space (mm)
+        using the NRRD 'space origin' and 'space directions' header fields.
+        If False, returns raw image pixel coordinates (X=column, Y=row).
+
+    Returns
+    -------
+    segments : list of numpy.ndarray
+        List of (N, 2) arrays, each representing a contour.
+    segment_labels : list of int
+        The label value associated with each segment in the list.
+    valid_labels : list of int
+        Unique non-zero labels found in the mask.
+
+    Raises
+    ------
+    FileNotFoundError
+        If nrrd_path does not exist.
+    ValueError
+        If the data is not 2D (after squeezing/slicing).
+    """
     if not Path(nrrd_path).exists():
         raise FileNotFoundError(f"NRRD mask file not found: {nrrd_path}")
         
@@ -131,7 +177,7 @@ def main():
     # Required Arguments
     parser.add_argument("--mask", required=True, help="Path to input multi-label NRRD mask")
     parser.add_argument("--output", required=True, help="Output directory folder")
-    parser.add_argument("--format", required=True, choices=["csv", "xml", "mis"], help="Output format (csv, xml, or mis)")
+    parser.add_argument("--format", required=True, choices=["csv", "xml", "mis"], help="Output format (csv for LMD from MMI, xml for LMD from Leica, or mis for Bruker FlexImaging)")
     
     # Conditionally Required / Format specific
     parser.add_argument("--mps", help="Path to input MPS calibration points (required for csv and xml)")
@@ -222,7 +268,7 @@ def main():
         
         # Mismaker instantiation
         mm = mismaker(imagefilename="mask.tif", outputfilename=str(out_file))
-        mm.load_mis(args.mis_template, mode="replace")
+        mm.load_mis(args.mis_template, mode="add")
         
         contourDict = {}
         for i, (seg, lbl) in enumerate(zip(segments, segment_labels)):

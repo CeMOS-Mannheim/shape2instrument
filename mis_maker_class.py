@@ -6,7 +6,6 @@ import tempfile, shutil, os
 from datetime import datetime
 import pathlib
 import re
-# In[2]:
 
 class mismaker():
     '''This class produces a *.mis-file in current working directory readable by flexImaging software
@@ -139,15 +138,17 @@ class mismaker():
                     ("Filehandler not operateable")
 
     def load_mis(self,path,mode="add"):
-        """loads existing *.mis-file, copies method as default for later "add_contours"
-        existing file content will be copied until first appearance of an area
-        defaults of initialization apply
+        """
+        Load an existing .mis file to use as a template.
 
-        invoce "add_contours", save via "save_mis"
-        
-        parameter:
-        path: str; path to existing *.mis-file
-        mode: str; defaults to "add", can be "replace": defines if Areas/ROI already present should be kept"""
+        Parameters
+        ----------
+        path : str or Path
+            Path to the source .mis file.
+        mode : str, optional
+            'add' (default): Appends new contours while keeping existing ones.
+            'replace': Strips existing Areas/ROIs from the template.
+        """
         if mode=="replace":
             print("Replacing mis content")
             firstarealine=None
@@ -231,14 +232,18 @@ class mismaker():
                 pass
 
     def add_contours(self,contourdict):
-        """contourdict:
-            A dictionary of polygonal contours (list) [,and their parameters (dict) if different from initialisation]
-            contourdict={"Name":{"contour":list([x,y]*n),"parameters":{"areaname": str,"method":str,"raster":[int,int]}}}
-            available parameters: 
-                areaname:           str;        is the name of the area, defaults to "Area i" wiht i=processed contours of the input
-                method:             str;        is the method to use within the distinct area, defaults to initial method
-                raster:             [int,int]   is the movement of the laser before each ablation
-                localreference_xy:  [int,int]   is the offset to add to each point of the polygon, defaults to initialisation
+        """
+        Add multiple contour polygons to the MIS file.
+
+        Parameters
+        ----------
+        contourdict : dict
+            A dictionary where each key is an identifier and each value is a dict containing:
+            - "contour": list of [x, y] coordinates.
+            - "parameters": (optional) dict overriding defaults like "areaname", "method", "raster".
+            
+            Example:
+            {"Name": {"contour": [[x,y],...], "parameters": {"areaname": "Target_1"}}}
         """
         defaultparameters={"method":self.defaultmethod,"reference_xy": self.defaultlocalreference,"raster":self.defaultraster,"polygontype":self.defaultpolygontype,"areaname":self.defaultareaname}
         parameters={}

@@ -35,8 +35,25 @@ def shape2csv(
     """
     Export shape segments and calibration points to MMI-compatible CSV.
 
-    segments: list of ndarray (N,2)
-    calibration_points: ndarray (3,2)
+    Parameters
+    ----------
+    segments : list of numpy.ndarray
+        List of (N, 2) arrays, each representing a contour.
+    calibration_points : numpy.ndarray
+        A (3, 2) array of physical calibration points.
+    offset : numpy.ndarray, optional
+        A (2,) array for [X, Y] offset (default: [0.0, 0.0]).
+    scaling_factor : float, optional
+        Global scaling factor (default: 1.0).
+    invert_factor : numpy.ndarray, optional
+        A (2,) array to flip axes (-1.0 to flip, default: [1.0, 1.0]).
+    folder_name : str or Path, optional
+        Output directory path.
+
+    Returns
+    -------
+    pathlib.Path
+        Path to the created CSV file.
     """
 
     # ---------- Input validation ----------
