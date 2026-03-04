@@ -5,9 +5,11 @@ from pathlib import Path
 import numpy as np
 import nrrd
 import cv2
+import datetime
 
 from shape2csv_v2 import shape2csv
 from shape2xml_v2 import shape2xml
+from mis_maker_class import mismaker
 
 def parse_mps_calibration(mps_path):
     """Parse calibration points from Medical Point Set (.mps) file."""
@@ -29,8 +31,10 @@ def parse_mps_calibration(mps_path):
         
     return np.array(points)
 
-def extract_segments_from_nrrd(nrrd_path):
-    """Extract distinct labeled segments from an NRRD file as polygons in physical coordinates."""
+def extract_segments_from_nrrd(nrrd_path, physical_space=True):
+    """Extract distinct labeled segments from an NRRD file as polygons.
+       If physical_space is True, formats returns real world mm coordinates via NRRD header.
+       If False, returns raw image pixel coordinates."""
     if not Path(nrrd_path).exists():
         raise FileNotFoundError(f"NRRD mask file not found: {nrrd_path}")
         
@@ -109,10 +113,14 @@ def extract_segments_from_nrrd(nrrd_path):
             spj = spacing_j.reshape(1, 2)
             orig = origin.reshape(1, 2)
             
-            # physical = origin + i * spacing_i + j * spacing_j
-            physical_points = orig + i_vals * spi + j_vals * spj
-            
-            segments.append(physical_points)
+            if physical_space:
+                # physical = origin + i * spacing_i + j * spacing_j
+                points = orig + i_vals * spi + j_vals * spj
+            else:
+                # Raw image coordinates: X=j, Y=i
+                points = np.hstack((j_vals, i_vals))
+                
+            segments.append(points)
             segment_labels.append(label)
         
     return segments, segment_labels, valid_labels
@@ -122,11 +130,12 @@ def main():
     
     # Required Arguments
     parser.add_argument("--mask", required=True, help="Path to input multi-label NRRD mask")
-    parser.add_argument("--mps", required=True, help="Path to input MPS calibration points")
     parser.add_argument("--output", required=True, help="Output directory folder")
-    parser.add_argument("--format", required=True, choices=["csv", "xml"], help="Output format (csv or xml)")
+    parser.add_argument("--format", required=True, choices=["csv", "xml", "mis"], help="Output format (csv, xml, or mis)")
     
     # Conditionally Required / Format specific
+    parser.add_argument("--mps", help="Path to input MPS calibration points (required for csv and xml)")
+    parser.add_argument("--mis_template", help="Path to template MIS file (required for mis format)")
     parser.add_argument("--cap_ids", type=str, help="Comma separated Capture IDs (required for xml format)")
     
     # Optional parameters
@@ -145,13 +154,23 @@ def main():
     print(f"Format:     {args.format}")
     print("---------------------")
 
-    # 1. Parse Calibration Points
-    print(f"Parsing MPS: {args.mps}")
-    calib_points = parse_mps_calibration(args.mps)
+    # Format specific validation
+    if args.format in ["csv", "xml"] and not args.mps:
+        print(f"Error: --mps is required when using format {args.format}.")
+        sys.exit(1)
+    if args.format == "mis" and not args.mis_template:
+        print("Error: --mis_template is required when using mis format.")
+        sys.exit(1)
+
+    # 1. Parse Calibration Points (only needed for CSV/XML)
+    calib_points = None
+    if args.format in ["csv", "xml"]:
+        print(f"Parsing MPS: {args.mps}")
+        calib_points = parse_mps_calibration(args.mps)
     
     # 2. Extract Segments
     print(f"Extracting Segments from NRRD: {args.mask}")
-    segments, segment_labels, valid_labels = extract_segments_from_nrrd(args.mask)
+    segments, segment_labels, valid_labels = extract_segments_from_nrrd(args.mask, physical_space=(args.format != "mis"))
     if not segments:
         print("Error: No segments found in the provided mask.")
         sys.exit(1)
@@ -197,6 +216,30 @@ def main():
             invert_factor=invert_arr,
             folder_name=args.output
         )
+    elif args.format == "mis":
+        timestamp = datetime.datetime.now().strftime("%d%m%Y_%H%M%S")
+        out_file = Path(args.output) / f"shape_{timestamp}.mis"
+        
+        # Mismaker instantiation
+        mm = mismaker(imagefilename="mask.tif", outputfilename=str(out_file))
+        mm.load_mis(args.mis_template, mode="replace")
+        
+        contourDict = {}
+        for i, (seg, lbl) in enumerate(zip(segments, segment_labels)):
+            # Apply user transforms
+            transformed = seg * args.scale * invert_arr + offset_arr
+            
+            contourDict[i] = {
+                "contour": transformed.astype(int),
+                "parameters": {
+                    "areaname": f"Label_{lbl}_{i}",
+                    "polygontype": "Area"
+                }
+            }
+            
+        mm.add_contours(contourDict)
+        mm.save_mis(str(out_file))
+        print(f"Export done: {out_file}")
 
 if __name__ == "__main__":
     main()

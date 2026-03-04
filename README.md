@@ -1,6 +1,6 @@
 # Shape2Instrument Docker Container
 
-This containerized add-on for M2AIA converts segmented shape definitions (multi-label NRRD mask) and calibration points (MPS PointSet) into physical vector polygons formatted for specific instrument interfaces (Leica `.xml` or MMI `.csv`).
+This containerized add-on for M²aia converts segmented shape definitions (multi-label NRRD mask) and point sets (MPS PointSet) into physical vector polygons formatted for specific instrument interfaces (Leica `.xml` or MMI `.csv`).
 
 ## Prerequisites
 - Docker must be installed and running on your system.
@@ -23,9 +23,12 @@ The tool expects specific inputs mounted as a volume so that the container can r
 
 ### Core Required Arguments:
 - `--mask`: Path to the input multi-label `.nrrd` image mask.
-- `--mps`: Path to the `.mps` calibration points file.
 - `--output`: Output directory inside the mounted volume where the result file will be saved.
-- `--format`: The target machine format to generate (`xml` or `csv`).
+- `--format`: The target machine format to generate (`xml`, `csv`, or `mis`).
+
+### Conditionally Required Arguments:
+- `--mps`: Path to the `.mps` calibration points file. (Required for `csv` and `xml` formats to perform physical space coordinate extraction).
+- `--mis_template`: Path to a template `.mis` file providing the slide optical mappings. (Required for `mis` format).
 
 ### Optional Transformation Arguments:
 - `--offset_x`: Float (default `0.0`)
@@ -70,3 +73,20 @@ docker run --rm \
   --format csv 
 ```
 *This outputs a file named `shape_<timestamp>.csv` in the `./results/` folder.*
+
+---
+
+### Example C: Generating Bruker flexImaging MIS
+
+MIS generation injects raw geometric pixel contours strictly into a user-provided template configuration. It maps regions sequentially based on input label hierarchies and does not require `.mps` geometry scaling.
+
+```bash
+docker run --rm \
+  -v "${PWD}:/data" \
+  shape2instrument:latest \
+  --mask /data/01-labels.nrrd \
+  --mis_template "/data/Bruker_Slide_Template.mis" \
+  --output /data/results \
+  --format mis 
+```
+*This outputs a file named `shape_<timestamp>.mis` in the `./results/` folder.*
