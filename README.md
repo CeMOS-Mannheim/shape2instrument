@@ -1,6 +1,6 @@
 # Shape2Instrument Docker Container
 
-This containerized add-on for M²aia converts segmented shape definitions (multi-label NRRD mask) and point sets (MPS PointSet) into physical vector polygons formatted for specific instrument interfaces (Leica `.xml` or MMI `.csv`).
+This containerized add-on for M²aia converts segmented shape definitions (multi-label NRRD mask) and point sets (MPS PointSet) into physical vector polygons formatted for specific instrument interfaces (Leica `.xml`, MMI `.csv`, or Bruker `.mis`).
 
 ## Prerequisites
 - Docker must be installed and running on your system.
