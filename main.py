@@ -260,7 +260,8 @@ def main():
             offset=offset_arr,
             scaling_factor=args.scale,
             invert_factor=invert_arr,
-            folder_name=args.output
+            folder_name=args.output,
+            unit_scaling=1000
         )
     elif args.format == "mis":
         timestamp = datetime.datetime.now().strftime("%d%m%Y_%H%M%S")

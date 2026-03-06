@@ -17,6 +17,7 @@ import numpy as np
 import dicttoxml
 import warnings
 import xml.etree.ElementTree as ET
+from xml.dom import minidom
 
 
 def shape2xml(
@@ -27,6 +28,7 @@ def shape2xml(
     scaling_factor=1.0,
     invert_factor=np.array([1, 1]),
     folder_name=None,
+    unit_scaling=1000,
 ):
     """
     Export shape segments and calibration points to Leica-compatible XML.
@@ -47,6 +49,8 @@ def shape2xml(
         A (2,) array to flip axes (-1.0 to flip, default: [1.0, 1.0]).
     folder_name : str or Path, optional
         Output directory path.
+    unit_scaling : float, optional
+        Factor to scale coordinates (default: 1000, e.g. mm to µm).
 
     Returns
     -------
@@ -70,12 +74,12 @@ def shape2xml(
         # -----------------------------
         xml_dict = {
             "GlobalCoordinates": 1,
-            "X_CalibrationPoint_1": int(calibration_points[0, 0]),
-            "Y_CalibrationPoint_1": int(calibration_points[0, 1]),
-            "X_CalibrationPoint_2": int(calibration_points[1, 0]),
-            "Y_CalibrationPoint_2": int(calibration_points[1, 1]),
-            "X_CalibrationPoint_3": int(calibration_points[2, 0]),
-            "Y_CalibrationPoint_3": int(calibration_points[2, 1]),
+            "X_CalibrationPoint_1": int(round(calibration_points[0, 0] * unit_scaling)),
+            "Y_CalibrationPoint_1": int(round(calibration_points[0, 1] * unit_scaling)),
+            "X_CalibrationPoint_2": int(round(calibration_points[1, 0] * unit_scaling)),
+            "Y_CalibrationPoint_2": int(round(calibration_points[1, 1] * unit_scaling)),
+            "X_CalibrationPoint_3": int(round(calibration_points[2, 0] * unit_scaling)),
+            "Y_CalibrationPoint_3": int(round(calibration_points[2, 1] * unit_scaling)),
             "ShapeCount": len(segments),
         }
 
@@ -93,7 +97,8 @@ def shape2xml(
             # Vectorized coordinate transform
             transformed = (
                 invert_factor * segment * scaling_factor + offset
-            ).round().astype(int)
+            ) * unit_scaling
+            transformed = transformed.round().astype(int)
 
             for j, (x, y) in enumerate(transformed, start=1):
                 shape_dict[f"X_{j}"] = int(x)
@@ -102,7 +107,7 @@ def shape2xml(
             xml_dict[f"Shape_{i}"] = shape_dict
 
         # -----------------------------
-        # Convert to XML
+        # Convert to XML & Pretty Print
         # -----------------------------
         xml_bytes = dicttoxml.dicttoxml(
             xml_dict,
@@ -110,7 +115,8 @@ def shape2xml(
             attr_type=False,
         )
 
-        xml_string = xml_bytes.decode()
+        reparsed = minidom.parseString(xml_bytes)
+        xml_string = reparsed.toprettyxml(indent="  ")
 
         # -----------------------------
         # Generate filename
@@ -143,6 +149,7 @@ def addshape2xml(
     offset=np.array([0.0, 0.0]),
     scaling_factor=1.0,
     invert_factor=np.array([1.0, 1.0]),
+    unit_scaling=1000,
 ):
     """
     Append new shapes to an existing Leica-style XML file.
@@ -161,6 +168,8 @@ def addshape2xml(
         Global scaling factor (default: 1.0).
     invert_factor : numpy.ndarray, optional
         A (2,) array to flip axes (-1.0 to flip, default: [1.0, 1.0]).
+    unit_scaling : float, optional
+        Factor to scale coordinates (default: 1000, e.g. mm to µm).
 
     Returns
     -------
@@ -213,7 +222,8 @@ def addshape2xml(
             # Vectorized coordinate transformation
             transformed = (
                 invert_factor * segment * scaling_factor + offset
-            ).round().astype(int)
+            ) * unit_scaling
+            transformed = transformed.round().astype(int)
 
             for j, (x, y) in enumerate(transformed, start=1):
                 ET.SubElement(shape_element, f"X_{j}").text = str(int(x))
@@ -222,11 +232,14 @@ def addshape2xml(
         # -----------------------------
         # Update ShapeCount
         # -----------------------------
-        shape_count_element.text = str(current_shape_count + len(segments))
+        shape_count_element.text = str(int(current_shape_count + len(segments)))
 
         # -----------------------------
-        # Write file
+        # Write file (with indent)
         # -----------------------------
+        if hasattr(ET, 'indent'):
+            ET.indent(tree, space="  ", level=0)
+            
         tree.write(path, encoding="utf-8", xml_declaration=True)
 
         print(f"Added {len(segments)} shape(s) → {path}")

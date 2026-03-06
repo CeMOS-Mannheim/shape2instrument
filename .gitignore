@@ -16,6 +16,8 @@ results_docker/
 # Output exports
 *.csv
 *.xml
+example_results/*
+examples/*
 
 # IDEs
 .vscode/
