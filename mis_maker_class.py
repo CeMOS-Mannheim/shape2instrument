@@ -10,11 +10,11 @@ import re
 class mismaker():
     '''This class produces a *.mis-file in current working directory readable by flexImaging software
         
-        - mandatory arguments:
+        - arguments:
         
-        imagefilename:  str;    Path of image to register with the mis file
+        imagefilename:  str;    Image to register with the mis file (default: "mask.tif")
        
-        - optional arguments:
+        - other optional arguments:
 
         outputfilename: str;    path of the *.mis-file to save to (present will be overwritten)
                                 anyway a *.mis-file is produced with leading datetime stamp
@@ -34,7 +34,7 @@ class mismaker():
         defaultpolygontype: str; the polygons default type if not defined later when adding, defaults to "Area", could be "ROI" (case sensitive)
         '''  
 
-    def __init__(self,imagefilename,outputfilename=None,defaultmethod=r"D:\method.m",teachpoints=None,referencepoint=None,basegeometry="MTP 384 ground steel.xeo",defaultlocalreference=[0,0],defaultraster=[20,20],defaultpolygontype="Area",defaultareaname=str("T"+datetime.now().strftime("%Y%m%d_%H%M%S"))):
+    def __init__(self,imagefilename="mask.tif",outputfilename=None,defaultmethod=r"D:\method.m",teachpoints=None,referencepoint=None,basegeometry="MTP 384 ground steel.xeo",defaultlocalreference=[0,0],defaultraster=[20,20],defaultpolygontype="Area",defaultareaname=str("T"+datetime.now().strftime("%Y%m%d_%H%M%S"))):
         
         
         if teachpoints!=None and len(teachpoints)!=3:
@@ -204,13 +204,26 @@ class mismaker():
         with open(self.vf.name, "a+") as output_file:
             print("</ImagingSequence>",file=output_file)
         shutil.copy(self.vf.name,name)
-        print("file saved as", str(os.getcwd()+"\\"+name))
+        print("file saved as", os.path.abspath(name))
         if self.outputfilename:
             shutil.copy(self.vf.name,self.outputfilename)
-            print("file saved as", str(os.getcwd()+"\\"+self.outputfilename))
+            print("file saved as", os.path.abspath(self.outputfilename))
         self.vf.close()
 
-    def _add_area_polygon(self,areaname,polygonpoints,method=None,raster=[10,10],localreference_xy=[0,0],polygontype="Area"):
+    def set_imagefile(self, imagefilename):
+        """
+        Update the ImageFile and OriginalImage tags in the temporary MIS content.
+        Called after load_mis() to override the template's image filename.
+        """
+        self.imagefile = imagefilename
+        with open(self.vf.name, "r") as f:
+            content = f.read()
+        content = re.sub(r"<ImageFile>.*?</ImageFile>", f"<ImageFile>{imagefilename}</ImageFile>", content)
+        content = re.sub(r"<OriginalImage>.*?</OriginalImage>", f"<OriginalImage>{imagefilename}</OriginalImage>", content)
+        with open(self.vf.name, "w") as f:
+            f.write(content)
+
+    def _add_area_polygon(self,areaname,polygonpoints,method=None,raster=[20,20],localreference_xy=[0,0],polygontype="Area"):
         if method==None:
             method=self.defaultmethod
         if polygontype!="ROI":
@@ -246,13 +259,6 @@ class mismaker():
             {"Name": {"contour": [[x,y],...], "parameters": {"areaname": "Target_1"}}}
         """
         defaultparameters={"method":self.defaultmethod,"reference_xy": self.defaultlocalreference,"raster":self.defaultraster,"polygontype":self.defaultpolygontype,"areaname":self.defaultareaname}
-        parameters={}
-        for k in contourdict.keys():
-            try:
-                parameters[k]=contourdict[k][parameters]
-            except:
-                break
-            parameters.update() 
         filename=self.vf.name
        
         with open(filename, "a+") as self.output_file:
@@ -262,7 +268,7 @@ class mismaker():
                     currentparameters["areaname"]=currentparameters["areaname"]+str(i)               
                 contour=v["contour"]
                 newparameters=contourdict.get(k)
-                for parameterkey,_ in newparameters.items():   
-                    currentparameters[parameterkey]=newparameters[parameterkey]
+                for parameterkey,_ in newparameters.get("parameters", {}).items():   
+                    currentparameters[parameterkey]=newparameters["parameters"][parameterkey]
                 self._add_area_polygon(currentparameters["areaname"],contour,currentparameters["method"],currentparameters["raster"],currentparameters["reference_xy"],currentparameters["polygontype"])
  

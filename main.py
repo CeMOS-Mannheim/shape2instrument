@@ -182,7 +182,9 @@ def main():
     # Conditionally Required / Format specific
     parser.add_argument("--mps", help="Path to input MPS calibration points (required for csv and xml)")
     parser.add_argument("--mis_template", help="Path to template MIS file (required for mis format)")
-    parser.add_argument("--cap_ids", type=str, help="Comma separated Capture IDs (optional for xml format — auto-generates 96-well-plate IDs if omitted)")
+    parser.add_argument("--mis_image", default="mask.tif", help="Image filename for flexImaging (default: mask.tif)")
+    parser.add_argument("--mis_raster", type=str, default="20,20", help="Raster spacing in µm (default: 20,20)")
+    parser.add_argument("--cap_ids", type=str, help="Comma separated Capture IDs for xml and csv export (optional for xml and csv format — auto-generates 96-well-plate IDs if omitted)")
     
     # Optional parameters
     parser.add_argument("--offset_x", type=float, default=0.0, help="Optional: X Offset (default: 0.0)")
@@ -269,9 +271,13 @@ def main():
         timestamp = datetime.datetime.now().strftime("%d%m%Y_%H%M%S")
         out_file = Path(args.output) / f"shape_{timestamp}.mis"
         
+        # Parse raster
+        raster = [int(x) for x in args.mis_raster.split(",")]
+        
         # Mismaker instantiation
-        mm = mismaker(imagefilename="mask.tif", outputfilename=str(out_file))
+        mm = mismaker(imagefilename=args.mis_image, outputfilename=str(out_file))
         mm.load_mis(args.mis_template, mode="add")
+        mm.set_imagefile(args.mis_image)
         
         contourDict = {}
         for i, (seg, lbl) in enumerate(zip(segments, segment_labels)):
@@ -282,7 +288,8 @@ def main():
                 "contour": transformed.astype(int),
                 "parameters": {
                     "areaname": f"Label_{lbl}_{i}",
-                    "polygontype": "Area"
+                    "polygontype": "Area",
+                    "raster": raster
                 }
             }
             

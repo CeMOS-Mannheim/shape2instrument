@@ -39,8 +39,9 @@ def shape2xml(
     ----------
     segments : list of numpy.ndarray
         List of (N, 2) arrays, each representing a contour.
-    capture_ids: list of str
+    capture_ids: list of str, optional
         The CapID associated with each segment.
+        If None (default for standalone use), auto-generates 96-well-plate-style IDs.
     calibration_points : numpy.ndarray
         A (3, 2) array of physical calibration points.
     offset : numpy.ndarray, optional
@@ -163,8 +164,9 @@ def addshape2xml(
     ----------
     segments : list of numpy.ndarray
         List of (N, 2) arrays, each representing a contour.
-    capture_ids : list of str
+    capture_ids : list of str, optional
         The CapID associated with each new segment.
+        If None, auto-generates 96-well-plate-style IDs.
     file_name : str or Path
         Path to the existing target .xml file.
     offset : numpy.ndarray, optional

@@ -56,6 +56,8 @@ docker run --rm -v "${PWD}:/data" shape2instrument:latest [arguments]
 | Argument | Default | Description |
 |----------|---------|-------------|
 | `--cap_ids` | auto-generated | Comma-separated capture IDs, one per **unique label** in the mask |
+| `--mis_image` | `mask.tif` | Image filename for flexImaging (mis format only) |
+| `--mis_raster` | `20,20` | Raster spacing in µm for flexImaging (mis format only) |
 | `--offset_x` | `0.0` | X offset |
 | `--offset_y` | `0.0` | Y offset |
 | `--scale` | `1.0` | Global scaling factor |
@@ -173,7 +175,9 @@ docker run --rm \
   --mask /data/01-labels.nrrd \
   --mis_template "/data/Bruker_Slide_Template.mis" \
   --output /data/results \
-  --format mis
+  --format mis \
+  --mis_image "mask.tif" \
+  --mis_raster 20,20
 ```
 
 ---

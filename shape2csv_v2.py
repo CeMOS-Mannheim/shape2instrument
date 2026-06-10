@@ -6,7 +6,7 @@ Each segment represents one shape consisting of pixel coordinates (x, y).
 
 The csv file contains:
 - Calibration points
-- Shapes
+- Shapes with Group labels (capture IDs)
 """
 
 import numpy as np
