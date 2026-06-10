@@ -14,6 +14,8 @@ from datetime import datetime
 import warnings
 from pathlib import Path
 
+from utils import generate_wellplate_ids
+
 def _transform_points(points, offset, scaling_factor, invert_factor):
     """Apply invert, scaling and offset transformation to Nx2 array."""
     return points * invert_factor * scaling_factor + offset
@@ -27,6 +29,7 @@ def _format_points(points):
 def shape2csv(
         segments,
         calibration_points,
+        capture_ids=None,
         offset=np.array([0.0, 0.0]),
         scaling_factor=1.0,
         invert_factor=np.array([1.0, 1.0]),
@@ -41,6 +44,9 @@ def shape2csv(
         List of (N, 2) arrays, each representing a contour.
     calibration_points : numpy.ndarray
         A (3, 2) array of physical calibration points.
+    capture_ids : list of str, optional
+        The CapID associated with each segment.
+        If None, auto-generates 96-well-plate-style IDs.
     offset : numpy.ndarray, optional
         A (2,) array for [X, Y] offset (default: [0.0, 0.0]).
     scaling_factor : float, optional
@@ -63,6 +69,13 @@ def shape2csv(
     if calibration_points.shape != (3, 2):
         raise ValueError("calibration_points must have shape (3,2)")
 
+    # ---------- Handle / auto-generate cap IDs ----------
+    if capture_ids is None:
+        capture_ids = generate_wellplate_ids(len(segments))
+
+    if len(segments) != len(capture_ids):
+        raise ValueError("segments and capture_ids must have same length.")
+
     # ---------- Transform calibration ----------
     cal_trans = _transform_points(
         calibration_points, offset, scaling_factor, invert_factor
@@ -77,7 +90,7 @@ def shape2csv(
         lines.append("")
 
     # ---------- Add segments ----------
-    for segment in segments:
+    for idx, segment in enumerate(segments):
         if segment.shape[1] != 2:
             raise ValueError("Each segment must have shape (N,2)")
 
@@ -85,7 +98,7 @@ def shape2csv(
             segment, offset, scaling_factor, invert_factor
         )
 
-        lines.append("#")
+        lines.append(f"# Group: {capture_ids[idx]}")
         lines.extend(_format_points(transformed))
         lines.append("")
 
@@ -108,6 +121,7 @@ def shape2csv(
 def addshape2csv(
         segments,
         file_name,
+        capture_ids=None,
         offset=np.array([0.0, 0.0]),
         scaling_factor=1.0,
         invert_factor=np.array([1.0, 1.0]),
@@ -121,10 +135,17 @@ def addshape2csv(
     if not path.exists():
         raise FileNotFoundError(f"{file_name} does not exist")
 
+    # ---------- Handle / auto-generate cap IDs ----------
+    if capture_ids is None:
+        capture_ids = generate_wellplate_ids(len(segments))
+
+    if len(segments) != len(capture_ids):
+        raise ValueError("segments and capture_ids must have same length.")
+
     lines = path.read_text().splitlines()
     lines.append("")
 
-    for segment in segments:
+    for idx, segment in enumerate(segments):
         if segment.shape[1] != 2:
             raise ValueError("Each segment must have shape (N,2)")
 
@@ -132,7 +153,7 @@ def addshape2csv(
             segment, offset, scaling_factor, invert_factor
         )
 
-        lines.append("#")
+        lines.append(f"# Group: {capture_ids[idx]}")
         lines.extend(_format_points(transformed))
         lines.append("")
 

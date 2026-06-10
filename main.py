@@ -182,7 +182,7 @@ def main():
     # Conditionally Required / Format specific
     parser.add_argument("--mps", help="Path to input MPS calibration points (required for csv and xml)")
     parser.add_argument("--mis_template", help="Path to template MIS file (required for mis format)")
-    parser.add_argument("--cap_ids", type=str, help="Comma separated Capture IDs (required for xml format)")
+    parser.add_argument("--cap_ids", type=str, help="Comma separated Capture IDs (optional for xml format — auto-generates 96-well-plate IDs if omitted)")
     
     # Optional parameters
     parser.add_argument("--offset_x", type=float, default=0.0, help="Optional: X Offset (default: 0.0)")
@@ -229,30 +229,28 @@ def main():
     # 4. Ensure output directory exists
     Path(args.output).mkdir(parents=True, exist_ok=True)
 
-    # 5. Dispatch to appropriate script
+    # 5. Prepare optional capture IDs (shared between csv and xml)
+    mapped_cap_ids = None
+    if args.cap_ids:
+        cap_ids = [cid.strip() for cid in args.cap_ids.split(",")]
+        if len(cap_ids) != len(valid_labels):
+            print(f"Error: Number of capture IDs ({len(cap_ids)}) does not match number of unique labels ({len(valid_labels)}).")
+            sys.exit(1)
+        label_to_capid = dict(zip(valid_labels, cap_ids))
+        mapped_cap_ids = [label_to_capid[lbl] for lbl in segment_labels]
+
+    # 6. Dispatch to appropriate script
     if args.format == "csv":
         shape2csv(
             segments=segments,
             calibration_points=calib_points,
+            capture_ids=mapped_cap_ids,
             offset=offset_arr,
             scaling_factor=args.scale,
             invert_factor=invert_arr,
             folder_name=args.output
         )
     elif args.format == "xml":
-        if not args.cap_ids:
-            print("Error: --cap_ids is required when using xml format.")
-            sys.exit(1)
-            
-        capture_ids = [cid.strip() for cid in args.cap_ids.split(",")]
-        
-        if len(capture_ids) != len(valid_labels):
-            print(f"Error: Number of capture IDs ({len(capture_ids)}) does not match number of unique labels ({len(valid_labels)}).")
-            sys.exit(1)
-            
-        label_to_capid = dict(zip(valid_labels, capture_ids))
-        mapped_cap_ids = [label_to_capid[lbl] for lbl in segment_labels]
-            
         shape2xml(
             segments=segments,
             capture_ids=mapped_cap_ids,

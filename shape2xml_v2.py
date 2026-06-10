@@ -19,11 +19,13 @@ import warnings
 import xml.etree.ElementTree as ET
 from xml.dom import minidom
 
+from utils import generate_wellplate_ids
+
 
 def shape2xml(
     segments,
-    capture_ids,
-    calibration_points,
+    capture_ids=None,
+    calibration_points=None,
     offset=np.array([0, 0]),
     scaling_factor=1.0,
     invert_factor=np.array([1, 1]),
@@ -60,9 +62,12 @@ def shape2xml(
 
     try:
         # -----------------------------
-        # Basic Validation
+        # Basic Validation / Auto-generate cap IDs
         # -----------------------------
-        if len(segments) != len(capture_ids):
+        if capture_ids is None:
+            capture_ids = generate_wellplate_ids(len(segments))
+            print(f"No capture_ids provided — auto-generated {len(capture_ids)} well-plate IDs.")
+        elif len(segments) != len(capture_ids):
             raise ValueError("segments and capture_ids must have same length.")
 
         calibration_points = np.asarray(calibration_points, dtype=float)
@@ -133,7 +138,7 @@ def shape2xml(
 
         filepath.write_text(xml_string)
 
-        print(f"XML exported successfully → {filepath}")
+        print(f"XML exported successfully -> {filepath}")
 
         return filepath
 
@@ -144,8 +149,8 @@ def shape2xml(
 
 def addshape2xml(
     segments,
-    capture_ids,
-    file_name,
+    capture_ids=None,
+    file_name=None,
     offset=np.array([0.0, 0.0]),
     scaling_factor=1.0,
     invert_factor=np.array([1.0, 1.0]),
@@ -183,7 +188,10 @@ def addshape2xml(
         if not path.exists():
             raise FileNotFoundError(f"{file_name} does not exist.")
 
-        if len(segments) != len(capture_ids):
+        if capture_ids is None:
+            capture_ids = generate_wellplate_ids(len(segments))
+            print(f"No capture_ids provided — auto-generated {len(capture_ids)} well-plate IDs.")
+        elif len(segments) != len(capture_ids):
             raise ValueError("segments and capture_ids must have same length.")
 
         offset = np.asarray(offset, dtype=float)
@@ -242,7 +250,7 @@ def addshape2xml(
             
         tree.write(path, encoding="utf-8", xml_declaration=True)
 
-        print(f"Added {len(segments)} shape(s) → {path}")
+        print(f"Added {len(segments)} shape(s) -> {path}")
 
         return path
 

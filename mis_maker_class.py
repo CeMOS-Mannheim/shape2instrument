@@ -39,7 +39,7 @@ class mismaker():
         
         if teachpoints!=None and len(teachpoints)!=3:
             print("teach point pairs must be exactly 3 or none")
-            teachpoints=[[[0,0][0,0]],[[0,0][0,0]],[[0,0][0,0]]]
+            teachpoints=[[[0,0],[0,0]],[[0,0],[0,0]],[[0,0],[0,0]]]
             return 
         if referencepoint!=None and len(referencepoint)!=2:
             print("reference point has only x,y")
@@ -131,7 +131,7 @@ class mismaker():
 </MDFParameters>""",file=filename)
                     for tp in teachpoints:
                         print(tp)
-                        print("<TeachPoint>"+str(tp[0][0])+","+str(tp[0][1])+";"+str(tp[1][0])+","+str(tp[1][0])+"</TeachPoint>",file=filename)
+                        print("<TeachPoint>"+str(tp[0][0])+","+str(tp[0][1])+";"+str(tp[1][0])+","+str(tp[1][1])+"</TeachPoint>",file=filename)
                     print("<ReferencePoint>"+str(referencepoint[0])+","+str(referencepoint[1])+"</ReferencePoint>", file=filename)
                     print("Mis initialized")
                 except:
