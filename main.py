@@ -230,14 +230,18 @@ def main():
     Path(args.output).mkdir(parents=True, exist_ok=True)
 
     # 5. Prepare optional capture IDs (shared between csv and xml)
-    mapped_cap_ids = None
+    from utils import generate_wellplate_ids
     if args.cap_ids:
         cap_ids = [cid.strip() for cid in args.cap_ids.split(",")]
         if len(cap_ids) != len(valid_labels):
             print(f"Error: Number of capture IDs ({len(cap_ids)}) does not match number of unique labels ({len(valid_labels)}).")
             sys.exit(1)
         label_to_capid = dict(zip(valid_labels, cap_ids))
-        mapped_cap_ids = [label_to_capid[lbl] for lbl in segment_labels]
+    else:
+        cap_ids = generate_wellplate_ids(len(valid_labels))
+        print(f"No --cap_ids provided — auto-generated {len(cap_ids)} well-plate IDs for {len(valid_labels)} unique label(s).")
+        label_to_capid = dict(zip(valid_labels, cap_ids))
+    mapped_cap_ids = [label_to_capid[lbl] for lbl in segment_labels]
 
     # 6. Dispatch to appropriate script
     if args.format == "csv":
